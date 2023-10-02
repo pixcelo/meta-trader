@@ -89,19 +89,34 @@ public:
     }
 
     // トレンド転換ラインを描画
-    void DrawTrendReversalLine(double price, int barsToExtend = 20) {
-        if (price <= 0) {
-            return;
+    void DrawTrendReversalLine(double trendReversalLineForLong, double trendReversalLineForShort) {
+        string lineNameForLong = "TrendReversalLineForLong";
+        string lineNameForShort = "TrendReversalLineForShort";
+
+        // 前回のトレンド転換ラインを削除
+        if(ObjectFind(lineNameForLong) != -1) {
+            ObjectDelete(lineNameForLong);
         }
 
-        string lineName = "TrendReversalLine_" + price + "_" + TimeToStr(TimeCurrent(), TIME_DATE | TIME_MINUTES);
-        datetime startTime = iTime(Symbol(), Period(), 0); // 現在のバーの時刻
-        datetime endTime = iTime(Symbol(), Period(), -barsToExtend); // 現在からbarsToExtendバー後の時刻
-
-        if (!ObjectCreate(lineName, OBJ_HLINE, 0, startTime, price)) {
-            ObjectMove(lineName, 0, startTime, price);
+        if(ObjectFind(lineNameForShort) != -1) {
+            ObjectDelete(lineNameForShort);
         }
-        ObjectSetInteger(0, lineName, OBJPROP_COLOR, clrYellow);
+
+        // trendReversalLineForLongが0より大きい場合、緑のラインを描画
+        if (trendReversalLineForLong > 0) {
+            CreateHorizontalLine(lineNameForLong, trendReversalLineForLong, clrGreen);
+        }
+
+        // trendReversalLineForShortが0より大きい場合、赤のラインを描画
+        if (trendReversalLineForShort > 0) {
+            CreateHorizontalLine(lineNameForShort, trendReversalLineForShort, clrRed);
+        }
+    }
+
+    // 水平ラインを作成するヘルパー関数
+    void CreateHorizontalLine(string lineName, double price, color lineColor) {
+        ObjectCreate(lineName, OBJ_HLINE, 0, TimeCurrent(), price);
+        ObjectSetInteger(0, lineName, OBJPROP_COLOR, lineColor);
         ObjectSetInteger(0, lineName, OBJPROP_RAY_RIGHT, true); // 右に伸びるように設定
         ObjectSetInteger(0, lineName, OBJPROP_STYLE, STYLE_SOLID); // 実線に設定
         ObjectSetInteger(0, lineName, OBJPROP_WIDTH, 1); // 線の太さを設定
