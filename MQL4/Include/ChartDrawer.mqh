@@ -15,12 +15,16 @@ private:
     color entryColor;
     color exitColor;
     color trendReversalLineColor;
+    color peakColor;
+    color valleyColor;
 
 public:
     ChartDrawer() {
         entryColor = clrGreen; // エントリーの色
         exitColor = clrRed;    // エグジットの色
         trendReversalLineColor = clrBlue; // トレンド転換ラインの色
+        peakColor = Yellow;  // ピークの色
+        valleyColor = Aqua;  // 谷の色
     }
 
     // エントリー位置を描画
@@ -46,6 +50,46 @@ public:
             ObjectSetInteger(0, "ExitArrow_" + time, OBJPROP_ARROWCODE, SYMBOL_ARROWDOWN);
         } else if (exitType == SHORT_EXIT) {
             ObjectSetInteger(0, "ExitArrow_" + time, OBJPROP_ARROWCODE, SYMBOL_ARROWUP);
+        }
+    }
+
+    // 極大値と極小値を描画
+    void DrawPeaksAndValleys(double &peakValues[], double &valleyValues[], int numOfExtrema = 10) {
+        // 既存のピークと谷のオブジェクトを削除
+        for (int i = ObjectsTotal() - 1; i >= 0; i--) {
+            string name = ObjectName(i);
+            if (StringFind(name, "Peak_") != -1 || StringFind(name, "Valley_") != -1) {
+                ObjectDelete(name);
+            }
+        }
+
+        int peakCount = 0;  // 描画されたピークの数を追跡するカウンター
+        int valleyCount = 0;  // 描画された谷の数を追跡するカウンター
+
+        // ピークを描画
+        for (int j = 0; j < ArraySize(peakValues) && (peakCount < numOfExtrema); j++) {
+            if (peakValues[j] != 0) {  // 値が0でないことを確認
+                string peakName = StringFormat("Peak_%d", j);
+                datetime peakTime = iTime(_Symbol, _Period, j);  // バーのインデックスからタイムスタンプを取得
+                double peakValue = peakValues[j];
+                ObjectCreate(0, peakName, OBJ_ARROW, 0, peakTime, peakValue);
+                ObjectSetInteger(0, peakName, OBJPROP_ARROWCODE, 233);  // 上向き矢印
+                ObjectSetInteger(0, peakName, OBJPROP_COLOR, peakColor);
+                peakCount++;  // 描画されたピークの数をインクリメント
+            }
+        }
+
+        // 谷を描画
+        for (int k = 0; k < ArraySize(valleyValues) && (valleyCount < numOfExtrema); k++) {
+            if (valleyValues[k] != 0) {  // 値が0でないことを確認
+                string valleyName = StringFormat("Valley_%d", k);
+                datetime valleyTime = iTime(_Symbol, _Period, k);  // バーのインデックスからタイムスタンプを取得
+                double ValleyValue = valleyValues[k];
+                ObjectCreate(0, valleyName, OBJ_ARROW, 0, valleyTime, ValleyValue);
+                ObjectSetInteger(0, valleyName, OBJPROP_ARROWCODE, 234);  // 下向き矢印
+                ObjectSetInteger(0, valleyName, OBJPROP_COLOR, valleyColor);
+                valleyCount++;  // 描画された谷の数をインクリメント
+            }
         }
     }
 
