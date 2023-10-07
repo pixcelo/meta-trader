@@ -25,8 +25,6 @@ public:
 
         int startBar = 0;
         int endBar = MathMin(Bars, term);
-        double lastPeakValue = 0;
-        double lastValleyValue = 0;
 
         for (int i = startBar; i < endBar; i++) {
             if (ArraySize(ExtremaArray) == limitLength) {
@@ -42,18 +40,22 @@ public:
             ex.value = zigzagValue;
             ex.timestamp = iTime(NULL, 0, i);
             ex.isPeak = iHigh(NULL, 0, i) == zigzagValue;
-            
-            // 起点となった一つ前の極値をプロパティに保持
-            if (ex.isPeak) {
-                ex.prevValue = lastValleyValue;
-                lastPeakValue = ex.value;
-            } else {
-                ex.prevValue = lastPeakValue;
-                lastValleyValue = ex.value;
-            }
 
             ArrayResize(ExtremaArray, ArraySize(ExtremaArray) + 1);
             ExtremaArray[ArraySize(ExtremaArray) - 1] = ex;
+        }
+
+        // 起点となった時系列的に一つ前の極値をプロパティに保持
+        double lastPeakValue = 0;
+        double lastValleyValue = 0;
+        for (int j = ArraySize(ExtremaArray) - 1; j >= 0; j--) {
+            if (ExtremaArray[j].isPeak) {
+                ExtremaArray[j].prevValue = lastValleyValue;
+                lastPeakValue = ExtremaArray[j].value;
+            } else {
+                ExtremaArray[j].prevValue = lastPeakValue;
+                lastValleyValue = ExtremaArray[j].value;
+            }
         }
     }
 };
