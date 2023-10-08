@@ -1,7 +1,17 @@
-// TradeUtility.mqh
-class TradeUtility {
+// Utility.mqh
+class Utility {
 
 public:
+   // 現在の通貨ペアのポイント係数を返す
+   // 通貨ペアやブローカーによって異なる価格の小数点位置を調整する
+   int GetPointCoefficient() {
+      if(_Digits == 3 || _Digits == 5) {
+         return 10;
+      } else {
+         return 1;
+      }
+   }
+
    // 時間帯内にいるかをチェックする
    bool IsWithinTradingHours(int startHour, int endHour) {
       datetime currentTime = TimeCurrent();
