@@ -12,6 +12,16 @@ public:
       }
    }
 
+   // スプレッド拡大への対応
+   bool IsSpreadTooHigh(string symbol, int pips)
+   {
+      double bid = MarketInfo(symbol, MODE_BID);
+      double ask = MarketInfo(symbol, MODE_ASK);
+      double spread = ask - bid;
+      double threshold = pips * Point * GetPointCoefficient();
+      return spread > threshold;
+   }
+
    // 時間帯内にいるかをチェックする
    bool IsWithinTradingHours(int startHour, int endHour) {
       datetime currentTime = TimeCurrent();
