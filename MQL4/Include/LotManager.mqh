@@ -45,17 +45,4 @@ public:
 
         return lotSize;
     }
-
-    // 価格の差をpips単位に変換
-    double PriceDifferenceToPips(double entryPrice, double stopLossPrice) {
-        double pipValue;
-
-        if (MarketInfo(Symbol(), MODE_DIGITS) == 3 || MarketInfo(Symbol(), MODE_DIGITS) == 5) {
-            pipValue = 0.01;
-        } else {
-            pipValue = 0.0001;
-        }
-
-        return MathAbs(entryPrice - stopLossPrice) / pipValue;
-    }
 };

@@ -1,58 +1,14 @@
-#include "ExtremaSeeker.mqh"
-
-// エントリータイプの列挙型
-enum EntryType {
-    LONG_ENTRY,
-    SHORT_ENTRY
-};
-
-// エグジットタイプの列挙型
-enum ExitType {
-    LONG_EXIT,
-    SHORT_EXIT
-};
+#include "ZigzagSeeker.mqh"
 
 class ChartDrawer {
 private:
-    color entryColor;
-    color exitColor;
-    color trendReversalLineColor;
     color peakColor;
     color valleyColor;
 
 public:
     ChartDrawer() {
-        entryColor = clrGreen; // エントリーの色
-        exitColor = clrRed;    // エグジットの色
-        trendReversalLineColor = clrBlue; // トレンド転換ラインの色
         peakColor = Yellow;  // ピークの色
         valleyColor = Aqua;  // 谷の色
-    }
-
-    // エントリー位置を描画
-    void DrawEntry(double price, datetime time, EntryType entryType) {
-        ObjectCreate("EntryArrow_" + time, OBJ_ARROW, 0, time, price);
-        ObjectSetInteger(0, "EntryArrow_" + time, OBJPROP_COLOR, entryColor);
-        
-        // エントリータイプに応じて矢印の方向を設定
-        if (entryType == LONG_ENTRY) {
-            ObjectSetInteger(0, "EntryArrow_" + time, OBJPROP_ARROWCODE, SYMBOL_ARROWUP);
-        } else if (entryType == SHORT_ENTRY) {
-            ObjectSetInteger(0, "EntryArrow_" + time, OBJPROP_ARROWCODE, SYMBOL_ARROWDOWN);
-        }
-    }
-
-    // エグジット位置を描画
-    void DrawExit(double price, datetime time, ExitType exitType) {
-        ObjectCreate("ExitArrow_" + time, OBJ_ARROW, 0, time, price);
-        ObjectSetInteger(0, "ExitArrow_" + time, OBJPROP_COLOR, exitColor);
-        
-        // エグジットタイプに応じて矢印の方向を設定
-        if (exitType == LONG_EXIT) {
-            ObjectSetInteger(0, "ExitArrow_" + time, OBJPROP_ARROWCODE, SYMBOL_ARROWDOWN);
-        } else if (exitType == SHORT_EXIT) {
-            ObjectSetInteger(0, "ExitArrow_" + time, OBJPROP_ARROWCODE, SYMBOL_ARROWUP);
-        }
     }
 
     // 極大値と極小値を描画
@@ -92,56 +48,17 @@ public:
         }
     }
 
-    void DrawFromHistory()
-    {
-        int totalOrders = OrdersHistoryTotal(); // Order Historyの総数を取得
-
-        for (int i = 0; i < totalOrders; i++)
-        {
-            if (OrderSelect(i, SELECT_BY_POS, MODE_HISTORY))
-            {
-                if (OrderSymbol() == Symbol() && (OrderType() == OP_BUY || OrderType() == OP_SELL))
-                {
-                    // エントリーポイントを描画
-                    datetime entryTime = OrderOpenTime();
-                    double entryPrice = OrderOpenPrice();
-                    EntryType entryType;
-                    if (OrderType() == OP_BUY) {
-                        entryType = LONG_ENTRY;
-                    } else {
-                        entryType = SHORT_ENTRY;
-                    }
-                    DrawEntry(entryPrice, entryTime, entryType);
-
-                    if (OrderClosePrice() == OrderTakeProfit() || OrderClosePrice() == OrderStopLoss())
-                    {
-                        // エグジットポイントを描画
-                        datetime exitTime = OrderCloseTime();
-                        double exitPrice = OrderClosePrice();
-                        ExitType exitType;
-                        if (OrderType() == OP_BUY) {
-                            exitType = LONG_EXIT;
-                        } else {
-                            exitType = SHORT_EXIT;
-                        }
-                        DrawExit(exitPrice, exitTime, exitType);
-                    }
-                }
-            }
-        }
-    }
-
     // トレンド転換ラインを描画
-    void DrawTrendReversalLine(double trendReversalLineForLong, double trendReversalLineForShort) {
+    void DrawTrendReversalLines(double trendReversalLineForLong, double trendReversalLineForShort) {
         string lineNameForLong = "TrendReversalLineForLong";
         string lineNameForShort = "TrendReversalLineForShort";
 
         // 前回のトレンド転換ラインを削除
-        if(ObjectFind(lineNameForLong) != -1) {
+        if (ObjectFind(lineNameForLong) != -1) {
             ObjectDelete(lineNameForLong);
         }
 
-        if(ObjectFind(lineNameForShort) != -1) {
+        if (ObjectFind(lineNameForShort) != -1) {
             ObjectDelete(lineNameForShort);
         }
 
@@ -154,6 +71,36 @@ public:
         if (trendReversalLineForShort > 0) {
             CreateHorizontalLine(lineNameForShort, trendReversalLineForShort, clrRed);
         }
+    }
+
+    void DrawHorizontalLineWithStrength(string lineName, double price, int strength) {
+        color lineColor;
+        int lineWidth;
+        int lineStyle;
+        
+        // 強度に基づいて色と太さとスタイルを設定
+        if (strength > 5) {
+            lineColor = clrRed;
+            lineWidth = 3;
+            lineStyle = STYLE_SOLID;
+        } else if (strength > 3) {
+            lineColor = clrOrange;
+            lineWidth = 2;
+            lineStyle = STYLE_SOLID;
+        } else {
+            lineColor = clrYellow;
+            lineWidth = 1;
+            lineStyle = STYLE_DOT;
+        }
+        
+        CreateHorizontalLine(lineName, price, lineColor);
+
+        ObjectSetInteger(0, lineName, OBJPROP_STYLE, lineStyle);
+        ObjectSetInteger(0, lineName, OBJPROP_WIDTH, lineWidth);
+
+        // string labelName = lineName + "_Label";
+        // ObjectCreate(labelName, OBJ_TEXT, 0, TimeCurrent(), price, "Strength: " + IntegerToString(strength));
+        // ObjectSetInteger(0, labelName, OBJPROP_COLOR, lineColor);
     }
 
     // 水平ラインを作成するヘルパー関数

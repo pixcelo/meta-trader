@@ -1,29 +1,20 @@
 // HorizontalLineManager.mqh
+struct HorizontalLine {
+    double price;
+    int strength;
+};
+
+HorizontalLine hLines[];
 
 #include "ZigzagSeeker.mqh"
 #include "Utility.mqh"
 
 class HorizontalLineManager
 {
-private:
-    struct HorizontalLine {
-        double price;
-        int strength;
-    };
-
-    HorizontalLine hLines[];
-    
+private:    
     Utility utility;
 
 public:
-    // Getter
-    void GetLines(HorizontalLine &linesCopy[]) {
-        ArrayResize(linesCopy, ArraySize(hLines));
-        for (int i = 0; i < ArraySize(hLines); i++) {
-            linesCopy[i] = hLines[i];
-        }
-    }
-
     // 強度の計算
     void CalculateStrength() {
         double pipRange = 5.0;  // 隣接する極値を同一と見なす範囲（ピプス）
@@ -46,6 +37,7 @@ public:
         
         int k = 0;
         for (int i = 0; i < ArraySize(hLines); i++) {
+            Print("hLines[i].strength ", hLines[i].strength);
             if (hLines[i].strength >= strengthThreshold) {
                 tempLines[k] = hLines[i];
                 k++;
@@ -75,4 +67,3 @@ public:
     }
 
 };
-
