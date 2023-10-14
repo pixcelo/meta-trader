@@ -78,29 +78,27 @@ public:
         int lineWidth;
         int lineStyle;
         
-        // 強度に基づいて色と太さとスタイルを設定
-        if (strength > 5) {
+        // 強度に基づいてスタイルを設定
+        if (strength >= 30) {
             lineColor = clrRed;
-            lineWidth = 3;
             lineStyle = STYLE_SOLID;
-        } else if (strength > 3) {
+        } else if (strength >= 25) {
             lineColor = clrOrange;
-            lineWidth = 2;
             lineStyle = STYLE_SOLID;
-        } else {
+        } else if (strength >= 20) {
             lineColor = clrYellow;
-            lineWidth = 1;
+            lineStyle = STYLE_SOLID;
+        } else if (strength >= 10) {
+            lineColor = clrBlue;
+            lineStyle = STYLE_DOT;
+        } else {
+            lineColor = clrGreen;
             lineStyle = STYLE_DOT;
         }
         
         CreateHorizontalLine(lineName, price, lineColor);
-
         ObjectSetInteger(0, lineName, OBJPROP_STYLE, lineStyle);
         ObjectSetInteger(0, lineName, OBJPROP_WIDTH, lineWidth);
-
-        // string labelName = lineName + "_Label";
-        // ObjectCreate(labelName, OBJ_TEXT, 0, TimeCurrent(), price, "Strength: " + IntegerToString(strength));
-        // ObjectSetInteger(0, labelName, OBJPROP_COLOR, lineColor);
     }
 
     // 水平ラインを作成するヘルパー関数
@@ -112,6 +110,13 @@ public:
         ObjectSetInteger(0, lineName, OBJPROP_WIDTH, 1); // 線の太さを設定
         ObjectSetInteger(0, lineName, OBJPROP_SELECTABLE, 0); // 選択不可に設定
         ObjectSetInteger(0, lineName, OBJPROP_SELECTED, 0); // 選択状態を解除
+    }
+
+    // 名前から強度を取得
+    int GetStrengthOfLine(string lineName) {
+        int lastUnderscorePos = StringFind(lineName, "_", 0);
+        string strengthStr = StringSubstr(lineName, lastUnderscorePos + 1); 
+        return StringToInteger(strengthStr);
     }
 
     // すべてのオブジェクトを削除
