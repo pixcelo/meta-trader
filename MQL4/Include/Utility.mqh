@@ -45,4 +45,69 @@ public:
          return true;
       return false;
    }
+
+   // 値幅の差が N pips 以下かを判定する
+   bool IsPriceDiffLessThanTargetPips(double a, double b, int pips) {
+      double diffPips = PriceToPips(MathAbs(a - b));
+      return diffPips <= pips;
+   }
+
+   // 値幅の差が N pips 以上かを判定する
+   bool IsPriceDiffLargerThanTargetPips(double a, double b, int pips) {
+      double diffPips = PriceToPips(MathAbs(a - b));
+      return diffPips >= pips;
+   }
+
+   // 値幅が N pips 以上かを判定する
+   bool IsPriceLargerThanTargetPips(double price, int pips) {
+      double pricePips = PriceToPips(price);
+      return pricePips >= pips;
+   }
+
+   // 価格をpipsに換算する
+   double PriceToPips(double price) {
+      double pips = 0;
+
+      // 現在の通貨ペアの小数点以下の桁数を取得
+      int digits = (int)MarketInfo(Symbol(), MODE_DIGITS);
+
+      // 3桁・5桁のFXブローカーの場合
+      if (digits == 3 || digits == 5){
+         pips = price * MathPow(10, digits) / 10;
+      }
+
+      // 2桁・4桁のFXブローカーの場合
+      if (digits == 2 || digits == 4){
+         pips = price * MathPow(10, digits);
+      }
+
+      // 少数点以下を１桁に丸める（目的によって桁数は変更する）
+      pips = NormalizeDouble(pips, 1);
+
+      return pips;
+   }
+
+   // pipsを価格に換算する
+   double PipsToPrice(double pips) {
+      double price = 0;
+
+      // 現在の通貨ペアの小数点以下の桁数を取得
+      int digits = (int)MarketInfo(Symbol(), MODE_DIGITS);
+
+      // 3桁・5桁のFXブローカー
+      if (digits == 3 || digits == 5){
+         price = pips / MathPow(10, digits) * 10;
+      }
+
+      // 2桁・4桁のFXブローカー
+      if (digits == 2 || digits == 4){
+         price = pips / MathPow(10, digits);
+      }
+
+      // 価格を有効桁数で丸める
+      price = NormalizeDouble(price, digits);
+      
+      return price;
+   }
+
 };
