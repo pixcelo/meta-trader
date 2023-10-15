@@ -11,13 +11,14 @@ Extremum ExtremaArray[];
 
 class ZigzagSeeker {
 private:
-    int depth, deviation, backstep;
+    int depth, deviation, backstep, timeframe;
 
 public:
-    void Initialize(int d=7, int dv=5, int bs=3) {
+    void Initialize(int d=12, int dv=5, int bs=3, int tf=0) {
          depth = d;
          deviation = dv;
          backstep = bs;
+         timeframe = tf;
     }
 
     void UpdateExtremaArray(int term, int limitLength) {
@@ -31,15 +32,15 @@ public:
                 break;
             }
 
-            double zigzagValue = iCustom(NULL, 0, "ZigZag", depth, deviation, backstep, 0, i);
+            double zigzagValue = iCustom(NULL, timeframe, "ZigZag", depth, deviation, backstep, 0, i);
             if (zigzagValue == 0) {
                 continue;
             }
             
             Extremum ex;
             ex.value = zigzagValue;
-            ex.timestamp = iTime(NULL, 0, i);
-            ex.isPeak = iHigh(NULL, 0, i) == zigzagValue;
+            ex.timestamp = iTime(NULL, timeframe, i);
+            ex.isPeak = iHigh(NULL, timeframe, i) == zigzagValue;
 
             ArrayResize(ExtremaArray, ArraySize(ExtremaArray) + 1);
             ExtremaArray[ArraySize(ExtremaArray) - 1] = ex;

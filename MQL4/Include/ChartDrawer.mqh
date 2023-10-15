@@ -79,16 +79,16 @@ public:
         int lineStyle;
         
         // 強度に基づいてスタイルを設定
-        if (strength >= 30) {
+        if (strength >= 5) {
             lineColor = clrRed;
             lineStyle = STYLE_SOLID;
-        } else if (strength >= 25) {
+        } else if (strength >= 4) {
             lineColor = clrOrange;
             lineStyle = STYLE_SOLID;
-        } else if (strength >= 20) {
+        } else if (strength >= 3) {
             lineColor = clrYellow;
             lineStyle = STYLE_SOLID;
-        } else if (strength >= 10) {
+        } else if (strength >= 2) {
             lineColor = clrBlue;
             lineStyle = STYLE_DOT;
         } else {
