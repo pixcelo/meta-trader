@@ -83,19 +83,19 @@ public:
         // トレンドラインを描画
         color trendLineColor;
         if (secondLastPeakTime != 0 && lastPeakTime != 0) {
-            if (secondLastPeakValue < lastPeakValue && Close[0] > lastPeakValue) {
-                trendLineColor = Green;
-            } else if (secondLastPeakValue > lastPeakValue && Close[0] < lastPeakValue) {
-                trendLineColor = Red;
+            if (secondLastPeakValue < lastPeakValue && Low[0] > lastValleyValue) {
+                trendLineColor = clrGreen;
+            } else if (secondLastPeakValue > lastPeakValue && High[0] < lastPeakValue) {
+                trendLineColor = clrRed;
             }
             DrawTrendLine("PeakTrendLine", secondLastPeakTime, secondLastPeakValue, lastPeakTime, lastPeakValue, trendLineColor);
         }
 
         if (secondLastValleyTime != 0 && lastValleyTime != 0) {
-            if (secondLastValleyValue < lastValleyValue && Close[0] > lastValleyValue) {
-                trendLineColor = Green;
-            } else if (secondLastValleyValue > lastValleyValue && Close[0] < lastValleyValue) {
-                trendLineColor = Red;
+            if (secondLastValleyValue < lastValleyValue && Low[0] > lastValleyValue) {
+                trendLineColor = clrGreen;
+            } else if (secondLastValleyValue > lastValleyValue && High[0] < lastPeakValue) {
+                trendLineColor = clrRed;
             }
             DrawTrendLine("ValleyTrendLine", secondLastValleyTime, secondLastValleyValue, lastValleyTime, lastValleyValue, trendLineColor);
         }
@@ -152,12 +152,12 @@ public:
         // UPフラクタルのトレンドラインの検証と描画
         if (secondLastUpFractalPrice < lastUpFractalPrice && Close[0] > lastUpFractalPrice) {
             DrawTrendLine("UpFractalTrendLine", secondLastUpFractalTime, secondLastUpFractalPrice, lastUpFractalTime, lastUpFractalPrice, Green);
-        } else if (secondLastUpFractalPrice > lastUpFractalPrice && Close[0] < lastUpFractalPrice) {
+        } else if (secondLastUpFractalPrice > lastUpFractalPrice && Close[0] < lastDownFractalPrice) {
             DrawTrendLine("UpFractalTrendLine", secondLastUpFractalTime, secondLastUpFractalPrice, lastUpFractalTime, lastUpFractalPrice, Red);
         }
 
         // DOWNフラクタルのトレンドラインの検証と描画
-        if (secondLastDownFractalPrice < lastDownFractalPrice && Close[0] > lastDownFractalPrice) {
+        if (secondLastDownFractalPrice < lastDownFractalPrice && Close[0] > lastUpFractalPrice) {
             DrawTrendLine("DownFractalTrendLine", secondLastDownFractalTime, secondLastDownFractalPrice, lastDownFractalTime, lastDownFractalPrice, Green);
         } else if (secondLastDownFractalPrice > lastDownFractalPrice && Close[0] < lastDownFractalPrice) {
             DrawTrendLine("DownFractalTrendLine", secondLastDownFractalTime, secondLastDownFractalPrice, lastDownFractalTime, lastDownFractalPrice, Red);
