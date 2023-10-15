@@ -17,22 +17,16 @@ private:
 public:
     // 強度の計算
     void CalculateStrength() {
-        double pipRange = 5.0;  // ブレイクを判定する範囲 (pips)
+        double pipsRange = 5.0;  // ブレイクを判定する範囲 (pips)
+        double distance = utility.PipsToPrice(pipsRange);
         
         for (int i = 0; i < ArraySize(hLines); i++) {
             hLines[i].strength = 5;  // 初期値は5
 
-            for (int j = 0; j < Bars; j++) {
+            for (int j = i; j >= 0; j--) {
                 // ローソク足の高値または安値がhLineを n pips以上ブレイクしていた場合、強度を下げる
-                if (High[j] > hLines[i].price + pipRange || Low[j] < hLines[i].price - pipRange) {
+                if (High[j] > hLines[i].price + distance || Low[j] < hLines[i].price - distance) {
                     hLines[i].strength--;
-                }
-
-                // strengthが0以下になったら配列から削除（オプション）
-                if (hLines[i].strength <= 0) {
-                    ArrayDelete(hLines, i);
-                    i--; // 削除後のインデックス調整
-                    break; 
                 }
             }
         }
@@ -46,7 +40,7 @@ public:
         int k = 0;
         for (int i = 0; i < ArraySize(hLines); i++) {
             if (hLines[i].strength >= strengthThreshold) {
-                Print("hLines[i].strength ", hLines[i].strength);
+                //Print("hLines[i].strength ", hLines[i].strength);
                 tempLines[k] = hLines[i];
                 k++;
             }
