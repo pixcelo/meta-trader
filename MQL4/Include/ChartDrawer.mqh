@@ -48,7 +48,136 @@ public:
         }
     }
 
-    // トレンド転換ラインを描画
+    // 極値からトレンドラインを描画
+    void DrawTrendLineFromPeaksAndValleys(Extremum &extremaArray[]) {
+        datetime lastPeakTime = 0, secondLastPeakTime = 0;
+        datetime lastValleyTime = 0, secondLastValleyTime = 0;
+        double lastPeakValue = 0, secondLastPeakValue = 0;
+        double lastValleyValue = 0, secondLastValleyValue = 0;
+
+        // 最新と2番目のピークと谷を見つける
+        for (int i = 0; i < ArraySize(extremaArray); i++) {
+            if (extremaArray[i].isPeak) {
+                if (lastPeakTime == 0) {
+                    lastPeakTime = extremaArray[i].timestamp;
+                    lastPeakValue = extremaArray[i].value;
+                } else if (secondLastPeakTime == 0) {
+                    secondLastPeakTime = extremaArray[i].timestamp;
+                    secondLastPeakValue = extremaArray[i].value;
+                }
+            } else {
+                if (lastValleyTime == 0) {
+                    lastValleyTime = extremaArray[i].timestamp;
+                    lastValleyValue = extremaArray[i].value;
+                } else if (secondLastValleyTime == 0) {
+                    secondLastValleyTime = extremaArray[i].timestamp;
+                    secondLastValleyValue = extremaArray[i].value;
+                }
+            }
+
+            if (secondLastPeakTime != 0 && secondLastValleyTime !=0) {
+                break;
+            }
+        }
+
+        // トレンドラインを描画
+        color trendLineColor;
+        if (secondLastPeakTime != 0 && lastPeakTime != 0) {
+            if (secondLastPeakValue < lastPeakValue && Close[0] > lastPeakValue) {
+                trendLineColor = Green;
+            } else if (secondLastPeakValue > lastPeakValue && Close[0] < lastPeakValue) {
+                trendLineColor = Red;
+            }
+            DrawTrendLine("PeakTrendLine", secondLastPeakTime, secondLastPeakValue, lastPeakTime, lastPeakValue, trendLineColor);
+        }
+
+        if (secondLastValleyTime != 0 && lastValleyTime != 0) {
+            if (secondLastValleyValue < lastValleyValue && Close[0] > lastValleyValue) {
+                trendLineColor = Green;
+            } else if (secondLastValleyValue > lastValleyValue && Close[0] < lastValleyValue) {
+                trendLineColor = Red;
+            }
+            DrawTrendLine("ValleyTrendLine", secondLastValleyTime, secondLastValleyValue, lastValleyTime, lastValleyValue, trendLineColor);
+        }
+    }
+
+    // フラクタルを検出し、トレンドラインを描画
+    void DrawFractalTrendLines(int timeframe) {
+        datetime lastUpFractalTime = 0, secondLastUpFractalTime = 0;
+        datetime lastDownFractalTime = 0, secondLastDownFractalTime = 0;
+        double lastUpFractalPrice = 0, secondLastUpFractalPrice = 0;
+        double lastDownFractalPrice = 0, secondLastDownFractalPrice = 0;
+
+        int rates_count = iBars(NULL, timeframe);
+
+        for(int i = 2; i < rates_count; i++) {
+            double currentHigh = iHigh(NULL, timeframe, i);
+            double currentLow = iLow(NULL, timeframe, i);
+
+            // UPフラクタルの検出
+            if (currentHigh > iHigh(NULL, timeframe, i-1) && 
+                currentHigh > iHigh(NULL, timeframe, i-2) && 
+                currentHigh > iHigh(NULL, timeframe, i+1) && 
+                currentHigh > iHigh(NULL, timeframe, i+2)) {
+
+                if (lastUpFractalTime == 0) {
+                    lastUpFractalTime = iTime(NULL, timeframe, i);
+                    lastUpFractalPrice = currentHigh;
+                } else if (secondLastUpFractalTime == 0) {
+                    secondLastUpFractalTime = iTime(NULL, timeframe, i);
+                    secondLastUpFractalPrice = currentHigh;
+                }
+            }
+
+            // DOWNフラクタルの検出
+            if (currentLow < iLow(NULL, timeframe, i-1) && 
+                currentLow < iLow(NULL, timeframe, i-2) && 
+                currentLow < iLow(NULL, timeframe, i+1) && 
+                currentLow < iLow(NULL, timeframe, i+2)) {
+
+                if (lastDownFractalTime == 0) {
+                    lastDownFractalTime = iTime(NULL, timeframe, i);
+                    lastDownFractalPrice = currentLow;
+                } else if (secondLastDownFractalTime == 0) {
+                    secondLastDownFractalTime = iTime(NULL, timeframe, i);
+                    secondLastDownFractalPrice = currentLow;
+                }
+            }
+
+            if (secondLastUpFractalTime != 0 && secondLastDownFractalTime != 0) {
+                    break;
+            }
+        }
+
+        // UPフラクタルのトレンドラインの検証と描画
+        if (secondLastUpFractalPrice < lastUpFractalPrice && Close[0] > lastUpFractalPrice) {
+            DrawTrendLine("UpFractalTrendLine", secondLastUpFractalTime, secondLastUpFractalPrice, lastUpFractalTime, lastUpFractalPrice, Green);
+        } else if (secondLastUpFractalPrice > lastUpFractalPrice && Close[0] < lastUpFractalPrice) {
+            DrawTrendLine("UpFractalTrendLine", secondLastUpFractalTime, secondLastUpFractalPrice, lastUpFractalTime, lastUpFractalPrice, Red);
+        }
+
+        // DOWNフラクタルのトレンドラインの検証と描画
+        if (secondLastDownFractalPrice < lastDownFractalPrice && Close[0] > lastDownFractalPrice) {
+            DrawTrendLine("DownFractalTrendLine", secondLastDownFractalTime, secondLastDownFractalPrice, lastDownFractalTime, lastDownFractalPrice, Green);
+        } else if (secondLastDownFractalPrice > lastDownFractalPrice && Close[0] < lastDownFractalPrice) {
+            DrawTrendLine("DownFractalTrendLine", secondLastDownFractalTime, secondLastDownFractalPrice, lastDownFractalTime, lastDownFractalPrice, Red);
+        }
+    }
+
+    // トレンドラインを描画
+    void DrawTrendLine(string name, datetime t1, double p1, datetime t2, double p2, color lineColor = Blue) {
+        ObjectCreate(0, name, OBJ_TREND, 0, t1, p1, t2, p2);
+        ObjectSetInteger(0, name, OBJPROP_COLOR, lineColor);
+    }
+
+    // チャネルラインを描画
+    void DrawChannelLines(string name1, string name2, datetime t1, double p1, datetime t2, double p2, double distance) {
+        DrawTrendLine(name1, t1, p1, t2, p2, Red);
+        ObjectCreate(0, name2, OBJ_TREND, 0, t1, p1 + distance, 0, t2, p2 + distance);
+        ObjectSetInteger(0, name2, OBJPROP_COLOR, Blue);
+    }
+
+    // トレンド転換ラインを描画（2つの水平線）
     void DrawTrendReversalLines(double trendReversalLineForLong, double trendReversalLineForShort) {
         string lineNameForLong = "TrendReversalLineForLong";
         string lineNameForShort = "TrendReversalLineForShort";
@@ -73,6 +202,7 @@ public:
         }
     }
 
+    // 強度に基づいて水平線を描画
     void DrawHorizontalLineWithStrength(string lineName, double price, int strength) {
         color lineColor;
         int lineWidth;
