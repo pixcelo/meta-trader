@@ -17,14 +17,22 @@ private:
 public:
     // 強度の計算
     void CalculateStrength() {
-        double pipRange = 3.0;  // 隣接する極値を同一と見なす範囲（ピプス）
+        double pipRange = 5.0;  // ブレイクを判定する範囲 (pips)
         
         for (int i = 0; i < ArraySize(hLines); i++) {
-            hLines[i].strength = 1;  // 初期値として自身をカウント
-            for (int j = 0; j < ArraySize(hLines); j++) {
-                double diffPips = utility.PriceToPips(MathAbs(hLines[i].price - hLines[j].price));
-                if (i != j && diffPips <= pipRange) {
-                    hLines[i].strength++;  // 価格がpipRange以内であればカウントアップ
+            hLines[i].strength = 5;  // 初期値は5
+
+            for (int j = 0; j < Bars; j++) {
+                // ローソク足の高値または安値がhLineを n pips以上ブレイクしていた場合、強度を下げる
+                if (High[j] > hLines[i].price + pipRange || Low[j] < hLines[i].price - pipRange) {
+                    hLines[i].strength--;
+                }
+
+                // strengthが0以下になったら配列から削除（オプション）
+                if (hLines[i].strength <= 0) {
+                    ArrayDelete(hLines, i);
+                    i--; // 削除後のインデックス調整
+                    break; 
                 }
             }
         }
