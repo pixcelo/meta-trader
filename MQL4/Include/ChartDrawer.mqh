@@ -88,6 +88,7 @@ public:
             } else if (secondLastPeakValue > lastPeakValue && High[0] < lastPeakValue) {
                 trendLineColor = clrRed;
             }
+            DeleteObjectByName("PeakTrendLine");
             DrawTrendLine("PeakTrendLine", secondLastPeakTime, secondLastPeakValue, lastPeakTime, lastPeakValue, trendLineColor);
         }
 
@@ -97,6 +98,7 @@ public:
             } else if (secondLastValleyValue > lastValleyValue && High[0] < lastPeakValue) {
                 trendLineColor = clrRed;
             }
+            DeleteObjectByName("ValleyTrendLine");
             DrawTrendLine("ValleyTrendLine", secondLastValleyTime, secondLastValleyValue, lastValleyTime, lastValleyValue, trendLineColor);
         }
     }
@@ -151,16 +153,16 @@ public:
 
         // UPフラクタルのトレンドラインの検証と描画
         if (secondLastUpFractalPrice < lastUpFractalPrice && Close[0] > lastUpFractalPrice) {
-            DrawTrendLine("UpFractalTrendLine", secondLastUpFractalTime, secondLastUpFractalPrice, lastUpFractalTime, lastUpFractalPrice, Green);
+            DrawTrendLine("UpFractalTrendLine", secondLastUpFractalTime, secondLastUpFractalPrice, lastUpFractalTime, lastUpFractalPrice, clrDodgerBlue);
         } else if (secondLastUpFractalPrice > lastUpFractalPrice && Close[0] < lastDownFractalPrice) {
-            DrawTrendLine("UpFractalTrendLine", secondLastUpFractalTime, secondLastUpFractalPrice, lastUpFractalTime, lastUpFractalPrice, Red);
+            DrawTrendLine("UpFractalTrendLine", secondLastUpFractalTime, secondLastUpFractalPrice, lastUpFractalTime, lastUpFractalPrice, clrTomato);
         }
 
         // DOWNフラクタルのトレンドラインの検証と描画
         if (secondLastDownFractalPrice < lastDownFractalPrice && Close[0] > lastUpFractalPrice) {
-            DrawTrendLine("DownFractalTrendLine", secondLastDownFractalTime, secondLastDownFractalPrice, lastDownFractalTime, lastDownFractalPrice, Green);
+            DrawTrendLine("DownFractalTrendLine", secondLastDownFractalTime, secondLastDownFractalPrice, lastDownFractalTime, lastDownFractalPrice, clrDodgerBlue);
         } else if (secondLastDownFractalPrice > lastDownFractalPrice && Close[0] < lastDownFractalPrice) {
-            DrawTrendLine("DownFractalTrendLine", secondLastDownFractalTime, secondLastDownFractalPrice, lastDownFractalTime, lastDownFractalPrice, Red);
+            DrawTrendLine("DownFractalTrendLine", secondLastDownFractalTime, secondLastDownFractalPrice, lastDownFractalTime, lastDownFractalPrice, clrTomato);
         }
     }
 
@@ -247,6 +249,30 @@ public:
         int lastUnderscorePos = StringFind(lineName, "_", 0);
         string strengthStr = StringSubstr(lineName, lastUnderscorePos + 1); 
         return StringToInteger(strengthStr);
+    }
+
+    // トレンドラインの現在価格を取得
+    double GetTrendLinePriceAtCurrentBar(string trendLineName) {
+        double price1 = ObjectGetDouble(0, trendLineName, OBJPROP_PRICE1);
+        double price2 = ObjectGetDouble(0, trendLineName, OBJPROP_PRICE2);
+        datetime time1 = ObjectGetInteger(0, trendLineName, OBJPROP_TIME1);
+        datetime time2 = ObjectGetInteger(0, trendLineName, OBJPROP_TIME2);
+        
+        double trendLinePrice = price1 + ((price2 - price1) / (time2 - time1)) * (Time[0] - time1);
+
+        return NormalizeDouble(trendLinePrice, Digits());
+    }
+
+    // オブジェクトの色を取得
+    color GetObjColor(string objName) {
+        return ObjectGetInteger(0, objName, OBJPROP_COLOR);
+    }
+
+    // 指定した名前のオブジェクトを削除
+    void DeleteObjectByName(string objName) {
+        if(ObjectFind(0, objName) != -1) {
+            ObjectDelete(0, objName);
+        }
     }
 
     // すべてのオブジェクトを削除
