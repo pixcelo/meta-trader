@@ -18,7 +18,7 @@ public:
       double bid = MarketInfo(symbol, MODE_BID);
       double ask = MarketInfo(symbol, MODE_ASK);
       double spread = ask - bid;
-      double threshold = pips * Point * GetPointCoefficient();
+      double threshold = PipsToPrice(pips);
       return spread > threshold;
    }
 

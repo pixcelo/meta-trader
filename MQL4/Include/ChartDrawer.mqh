@@ -88,7 +88,6 @@ public:
             } else if (secondLastPeakValue > lastPeakValue && High[0] < lastPeakValue) {
                 trendLineColor = clrRed;
             }
-            DeleteObjectByName("PeakTrendLine");
             DrawTrendLine("PeakTrendLine", secondLastPeakTime, secondLastPeakValue, lastPeakTime, lastPeakValue, trendLineColor);
         }
 
@@ -98,7 +97,6 @@ public:
             } else if (secondLastValleyValue > lastValleyValue && High[0] < lastPeakValue) {
                 trendLineColor = clrRed;
             }
-            DeleteObjectByName("ValleyTrendLine");
             DrawTrendLine("ValleyTrendLine", secondLastValleyTime, secondLastValleyValue, lastValleyTime, lastValleyValue, trendLineColor);
         }
     }
@@ -168,6 +166,7 @@ public:
 
     // トレンドラインを描画
     void DrawTrendLine(string name, datetime t1, double p1, datetime t2, double p2, color lineColor = Blue) {
+        DeleteObjectByName(name);
         ObjectCreate(0, name, OBJ_TREND, 0, t1, p1, t2, p2);
         ObjectSetInteger(0, name, OBJPROP_COLOR, lineColor);
     }
@@ -195,12 +194,12 @@ public:
 
         // trendReversalLineForLongが0より大きい場合、緑のラインを描画
         if (trendReversalLineForLong > 0) {
-            CreateHorizontalLine(lineNameForLong, trendReversalLineForLong, clrGreen);
+            CreateHorizontalLine(lineNameForLong, trendReversalLineForLong, clrSpringGreen);
         }
 
         // trendReversalLineForShortが0より大きい場合、赤のラインを描画
         if (trendReversalLineForShort > 0) {
-            CreateHorizontalLine(lineNameForShort, trendReversalLineForShort, clrRed);
+            CreateHorizontalLine(lineNameForShort, trendReversalLineForShort, clrOrchid);
         }
     }
 
