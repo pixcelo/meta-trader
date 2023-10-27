@@ -31,12 +31,19 @@ public:
       return false;
    }
 
+   // 最後の取引から一定の秒数が経過しているかをチェックする
+   bool IsWithinTradeInterval(datetime lastTradeTime) {
+      int lastTradeIntervalSeconds = 300; // 最後のトレードからの間隔(秒)
+      if (TimeCurrent() - lastTradeTime < lastTradeIntervalSeconds) {
+         return true;
+      }
+      return false;
+   }
+
    // ボラティリティが許容範囲内かチェックする
    bool IsVolatilityAcceptable(string symbol, int period = 14, double minATRThreshold = 0.01) {
-      double atrValue = iATR(symbol, PERIOD_H1, period, 0);
-      if (atrValue > minATRThreshold)
-         return true;
-      return false;
+      double atrValue = iATR(symbol, PERIOD_CURRENT, period, 0);
+      return atrValue > minATRThreshold;
    }
 
    // エントリーチェック関数

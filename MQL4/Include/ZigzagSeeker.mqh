@@ -8,6 +8,7 @@ struct Extremum {
 
 // グローバル変数に定義：includeで他クラスからアクセス可能な状態
 Extremum ExtremaArray[];
+Extremum ExShortArray[];
 
 class ZigzagSeeker {
 private:
@@ -156,4 +157,44 @@ public:
 
         return -1;
     }
+
+    void UpdateExShortArray(int term, int limitLength, int tf = PERIOD_M1) {
+        ArrayResize(ExShortArray, 0);
+
+        int startBar = 0;
+        int endBar = MathMin(Bars, term);
+
+        for (int i = startBar; i < endBar; i++) {
+            if (ArraySize(ExShortArray) == limitLength) {
+                break;
+            }
+
+            double zigzagValue = iCustom(NULL, tf, "ZigZag", 12, 5, 3, 0, i);
+            if (zigzagValue == 0) {
+                continue;
+            }
+            
+            Extremum ex;
+            ex.value = zigzagValue;
+            ex.timestamp = iTime(NULL, tf, i);
+            ex.isPeak = iHigh(NULL, tf, i) == zigzagValue;
+
+            ArrayResize(ExShortArray, ArraySize(ExShortArray) + 1);
+            ExShortArray[ArraySize(ExShortArray) - 1] = ex;
+        }
+
+        // 起点となった時系列的に一つ前の極値をプロパティに保持
+        double lastPeakValue = 0;
+        double lastValleyValue = 0;
+        for (int j = ArraySize(ExShortArray) - 1; j >= 0; j--) {
+            if (ExShortArray[j].isPeak) {
+                ExShortArray[j].prevValue = lastValleyValue;
+                lastPeakValue = ExShortArray[j].value;
+            } else {
+                ExShortArray[j].prevValue = lastPeakValue;
+                lastValleyValue = ExShortArray[j].value;
+            }
+        }
+    }
+
 };

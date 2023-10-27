@@ -2,6 +2,7 @@
 struct HorizontalLine {
     double price;
     int strength;
+    bool isPeak;
 };
 
 HorizontalLine hLines[];
@@ -12,21 +13,25 @@ HorizontalLine hLines[];
 class HorizontalLineManager
 {
 private:    
-    Utility utility;
+    Utility ut;
 
 public:
     // 強度の計算
     void CalculateStrength() {
-        double pipsRange = 5.0;  // ブレイクを判定する範囲 (pips)
-        double distance = utility.PipsToPrice(pipsRange);
+        double pipsRange = 5.0;  // ラインの近くを判定する範囲 (pips)
+        double distance = ut.PipsToPrice(pipsRange);
         
         for (int i = 0; i < ArraySize(hLines); i++) {
-            hLines[i].strength = 5;  // 初期値は5
-
-            for (int j = i; j >= 0; j--) {
-                // ローソク足の高値または安値がhLineを n pips以上ブレイクしていた場合、強度を下げる
-                if (High[j] > hLines[i].price + distance || Low[j] < hLines[i].price - distance) {
-                    hLines[i].strength--;
+            hLines[i].strength = 0;  // 初期値は0
+            
+            for (int j = 0; j < Bars; j++) {
+                // ローソク足の高値または安値がhLineの近くにある場合、強度を増やす
+                if (High[j] <= hLines[i].price + distance && High[j] >= hLines[i].price - distance) {
+                    hLines[i].strength++;
+                }
+                
+                if (Low[j] <= hLines[i].price + distance && Low[j] >= hLines[i].price - distance) {
+                    hLines[i].strength++;
                 }
             }
         }
@@ -82,16 +87,19 @@ public:
         }
 
         CalculateStrength();
-        FilterStrongLines(strengthThreshold);
+        //FilterStrongLines(strengthThreshold);
+
+        // 直近のラインだけを表示
+        ArrayResize(hLines, 5);
     }
 
     // 強度を計算し、閾値以上の極値をフィルタリングして水平線を識別
-    void IdentifyStrongHorizontalLinesByExtrema(int strengthThreshold) {
+    void IdentifyStrongHorizontalLinesByExtrema(Extremum &extremaArray[], int strengthThreshold) {
         // 極値の配列から価格データのみを抽出
         double prices[];
-        ArrayResize(prices, ArraySize(ExtremaArray));
-        for (int i = 0; i < ArraySize(ExtremaArray); i++) {
-            prices[i] = ExtremaArray[i].value;
+        ArrayResize(prices, ArraySize(extremaArray));
+        for (int i = 0; i < ArraySize(extremaArray); i++) {
+            prices[i] = extremaArray[i].value;
         }
         
         // 極値をセットし、強度を計算、強度の閾値以上のものをフィルタリングして、最終的な強い水平線のセットをhLinesに保持
@@ -101,7 +109,10 @@ public:
             hLines[j].strength = 0;
         }
         CalculateStrength();
-        FilterStrongLines(strengthThreshold);
+        //FilterStrongLines(strengthThreshold);
+
+        // 直近のラインだけを表示
+        ArrayResize(hLines, 5);
     }
 
 };
