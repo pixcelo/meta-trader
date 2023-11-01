@@ -158,6 +158,50 @@ public:
         return -1;
     }
 
+    // ダウ理論に基づいたトレンド方向を取得
+    int GetTrendDirection(Extremum &extremaArray[]) {
+        datetime lastPeakTime = 0, secondLastPeakTime = 0;
+        datetime lastValleyTime = 0, secondLastValleyTime = 0;
+        double lastPeakValue = 0, secondLastPeakValue = 0;
+        double lastValleyValue = 0, secondLastValleyValue = 0;
+
+        // 最新と2番目のピークと谷を見つける
+        for (int i = 0; i < ArraySize(extremaArray); i++) {
+            if (extremaArray[i].isPeak) {
+                if (lastPeakTime == 0) {
+                    lastPeakTime = extremaArray[i].timestamp;
+                    lastPeakValue = extremaArray[i].value;
+                } else if (secondLastPeakTime == 0) {
+                    secondLastPeakTime = extremaArray[i].timestamp;
+                    secondLastPeakValue = extremaArray[i].value;
+                }
+            } else {
+                if (lastValleyTime == 0) {
+                    lastValleyTime = extremaArray[i].timestamp;
+                    lastValleyValue = extremaArray[i].value;
+                } else if (secondLastValleyTime == 0) {
+                    secondLastValleyTime = extremaArray[i].timestamp;
+                    secondLastValleyValue = extremaArray[i].value;
+                }
+            }
+
+            if (secondLastPeakTime != 0 && secondLastValleyTime !=0) {
+                break;
+            }
+        }
+
+        // トレンド方向を判断
+        if (secondLastPeakTime != 0 && lastPeakTime != 0 && secondLastValleyTime != 0 && lastValleyTime != 0) {
+            if (secondLastPeakValue < lastPeakValue && secondLastValleyValue < lastValleyValue) {
+                return 1; // 上昇トレンド
+            } else if (secondLastPeakValue > lastPeakValue && secondLastValleyValue > lastValleyValue) {
+                return 2; // 下降トレンド
+            }
+        }
+
+        return 0;
+    }
+
     void UpdateExShortArray(int term, int limitLength, int tf = PERIOD_M1) {
         ArrayResize(ExShortArray, 0);
 
