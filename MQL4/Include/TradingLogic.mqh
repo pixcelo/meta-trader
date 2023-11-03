@@ -7,7 +7,7 @@ input int MinStopLossPips = 10;                // ストップロスの下限(pi
 input int Depth = 7;                           // ZigzagのDepth設定
 input int Deviation = 5;                       // ZigzagのDeviation設定
 input int Backstep = 3;                        // ZigzagのBackstep設定
-input int zigzagTerm = 240;                    // 極値を計算する期間
+input int zigzagArrayLength = 12;              // 極値を保持する配列の要素数
 
 // Threshold
 input int SpreadThresholdPips = 5;             // スプレッド閾値(pips)
@@ -36,7 +36,6 @@ private:
     Utility ut;
 
     datetime lastTradeTime;
-    datetime lastObjTime;
     int lastTimeChecked;
 
     // 関数呼び出しは計算コストが掛かるため変数に格納する
@@ -45,10 +44,9 @@ private:
 
 public:
     TradingLogic() {
-        zzSeeker.Initialize(Depth, Deviation, Backstep, PERIOD_M15);
+        zzSeeker.Initialize(Depth, Deviation, Backstep, PERIOD_M1);
         rangeBox.Init(15, 10, 100);
         printer.EnableLogging(EnableLogging);
-        lastObjTime = TimeCurrent();
         symbol = Symbol();
         timeframe = PERIOD_CURRENT;
     }
@@ -65,19 +63,19 @@ public:
         }
 
         // Set up
-        // zzSeeker.UpdateExtremaArray(zigzagTerm, 50);
-        // zzSeeker.UpdateExShortArray(zigzagTerm, 200, PERIOD_M1);
+        zzSeeker.UpdateExtremaArray(zigzagArrayLength);
+        // zzSeeker.UpdateExSecondArray(zigzagArrayLength, PERIOD_M5);
 
         // Draw objects
-        // chartDrawer.DrawPeaksAndValleys(ExtremaArray, 50);
-        //chartDrawer.DrawTrendLineFromPeaksAndValleys(ExtremaArray);
+        zzSeeker.DrawPeaksAndValleys(ExSecondArray, 50);
+        // chartDrawer.DrawTrendLineFromPeaksAndValleys(ExSecondArray);
 
         // 15分ごとに描画
         // datetime currentTime = TimeCurrent();
         // datetime last15MinTime = iTime(NULL, PERIOD_M15, 0);
         // if (last15MinTime > lastTimeChecked) {
         //     lastTimeChecked = last15MinTime;
-        //     chartDrawer.DrawTrendLineFromPeaksAndValleys(ExtremaArray);
+        //     chartDrawer.DrawTrendLineFromPeaksAndValleys(ExSecondArray);
         // }
 
         // Startegy
@@ -100,7 +98,7 @@ private:
         // }
 
         int action = rangeBox.OnTick();
-        double stopLossPrice = rangeBox.GetStopLossPrice();
+        double stopLossPrice = 0;
         double takeProfitPrice = 0;
         int ticket = 0;
 
@@ -108,105 +106,32 @@ private:
             return;
         }
 
+        // TODO ある条件下でrr比を*2する処理を入れる
+        // レンジブレイク後にその価格を保持、その価格に戻ってきたら反対方向にエントリーしてレンジの戻りまでの利幅を取る
+
+        // double ema = iMA(symbol, timeframe, 100, 0, MODE_EMA, PRICE_CLOSE, 0);
+        int trendDirection = zzSeeker.GetTrendDirection(ExSecondArray);
+        
         // Buy
-        if (action == 1) {
+        if (action == 1) {// && zzSeeker.IsPriceFormingUpTrend()) {
             // orderMgr.ClosePositionOnSignal(OP_SELL, Magic);
-            // stopLossPrice = AdjustStopLoss(1, MarketInfo(symbol, MODE_ASK), stopLossPrice, MinStopLossPips);
+            // stpLosttPrice = rangeBox.GetStopLossPrice();
+            stopLossPrice = zzSeeker.GetLatestValue(false);
+            stopLossPrice = AdjustStopLoss(1, MarketInfo(symbol, MODE_ASK), stopLossPrice, MinStopLossPips);
             ticket = orderMgr.PlaceBuyOrder(action, stopLossPrice, takeProfitPrice, RiskRewardRatio, Magic);
-            if (ticket > 0) {
-                lastTradeTime = TimeCurrent();
-            }
         }
 
         // Sell
-        if (action == 2) {
+        if (action == 2) {// && zzSeeker.IsPriceFormingDownTrend()) {
             // orderMgr.ClosePositionOnSignal(OP_BUY, Magic);
-            // stopLossPrice = AdjustStopLoss(2, MarketInfo(symbol, MODE_BID), stopLossPrice, MinStopLossPips);
+            stopLossPrice = zzSeeker.GetLatestValue(true);
+            stopLossPrice = AdjustStopLoss(2, MarketInfo(symbol, MODE_BID), stopLossPrice, MinStopLossPips);
             ticket = orderMgr.PlaceSellOrder(action, stopLossPrice, takeProfitPrice, RiskRewardRatio, Magic);
-            if (ticket > 0) {
-                lastTradeTime = TimeCurrent();
-            }
-        }
-    }
-
-    bool IsPerfectOrder(int action)
-    {
-        double maShort = 0;
-        double maMiddle = 0;
-        double maLong = 0;
-
-        if (action == 1) {
-            maShort = iMA(symbol, timeframe, 50, 0, MODE_SMA, PRICE_CLOSE, 0);
-            maMiddle = iMA(symbol, timeframe, 100, 0, MODE_SMA, PRICE_CLOSE, 0);
-            maLong = iMA(symbol, timeframe, 200, 0, MODE_SMA, PRICE_CLOSE, 0);
-            return maShort > maMiddle && maMiddle > maLong;
         }
 
-        if (action == 2) {
-            maShort = iMA(symbol, timeframe, 50, 0, MODE_SMA, PRICE_CLOSE, 0);
-            maMiddle = iMA(symbol, timeframe, 100, 0, MODE_SMA, PRICE_CLOSE, 0);
-            maLong = iMA(symbol, timeframe, 200, 0, MODE_SMA, PRICE_CLOSE, 0);
-            return maShort < maMiddle && maMiddle < maLong;
+        if (ticket > 0) {
+            lastTradeTime = TimeCurrent();
         }
-
-        return false;
-    }
-
-    // ローソク足の大きさを確認
-    bool IsExceptionallyLargeCandle(int action)
-    {
-        double openPrice = iOpen(symbol, timeframe, 0);
-        double closePrice = iClose(symbol, timeframe, 0);
-        double highPrice = iHigh(symbol, timeframe, 0);
-        double lowPrice = iLow(symbol, timeframe, 0);
-
-        if (action == 1 && closePrice < openPrice) {
-            return false; // 陰線の場合
-        }
-        if (action == 2 && closePrice > openPrice) {
-            return false; // 陽線の場合
-        }
-
-        double bodyLength = MathAbs(closePrice - openPrice); // 実体の絶対値を取得
-        double compareBody = MaximumBodyLength(20, 1);
-        double wickLength;
-
-        if (closePrice > openPrice) // 陽線の場合
-            wickLength = highPrice - closePrice; // 上ヒゲの長さ
-        else
-            wickLength = openPrice - lowPrice; // 下ヒゲの長さ
-
-        // 直近20本で比較的大きい（またはNpips以上）でヒゲが小さいローソク足
-        return (bodyLength > compareBody
-            && bodyLength >= LargeCandleBodyPips * Point * ut.GetPointCoefficient())
-            && wickLength < bodyLength * 0.1;
-    }
-
-    double MaximumBodyLength(int barsToConsider, int startShift)
-    {
-        double maxBodyLength = 0;
-        for (int i = 0; i < barsToConsider; i++)
-        {
-            double openPrice = iOpen(symbol, timeframe, i + startShift);
-            double closePrice = iClose(symbol, timeframe, i + startShift);
-            double bodyLength = MathAbs(closePrice - openPrice);
-            
-            if (bodyLength > maxBodyLength)
-                maxBodyLength = bodyLength;
-        }
-        return maxBodyLength;
-    }
-
-    // 直近N分間の最高価格を返す
-    double GetHighestPrice(int n) {
-        int highBar = iHighest(symbol, timeframe, MODE_HIGH, n, 1);
-        return iHigh(symbol, timeframe, highBar);
-    }
-
-    // 直近N分間の最低価格を返す
-    double GetLowestPrice(int n) {
-        int lowBar = iLowest(symbol, timeframe, MODE_LOW, n, 1);
-        return iLow(symbol, timeframe, lowBar);
     }
 
     // ストップロスの下限を指定したpipsに設定
