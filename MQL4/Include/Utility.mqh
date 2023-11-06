@@ -13,10 +13,10 @@ public:
    }
 
    // スプレッド拡大への対応
-   bool IsSpreadTooHigh(string symbol, int pips)
+   bool IsSpreadTooHigh(int pips)
    {
-      double bid = MarketInfo(symbol, MODE_BID);
-      double ask = MarketInfo(symbol, MODE_ASK);
+      double bid = MarketInfo(NULL, MODE_BID);
+      double ask = MarketInfo(NULL, MODE_ASK);
       double spread = ask - bid;
       double threshold = PipsToPrice(pips);
       return spread > threshold;

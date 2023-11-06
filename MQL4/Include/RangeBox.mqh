@@ -1,11 +1,12 @@
 // RangeBox.mqh
 #property strict
-
+#include "Candlestick.mqh"
 #include "Utility.mqh"
 
 class RangeBox
 {
 private:
+    Candlestick cs;
     Utility ut;
 
     struct boxPrice {
@@ -24,8 +25,14 @@ private:
     double stopLossPrice;
     datetime lastTimestamp;
     int boxCounter;
-    double highestValue;
-    double lowestValue;
+
+    datetime lastLongCheckedTime;
+    double highestLongValue;
+    double lowestLongValue;
+
+    datetime lastShortCheckedTime;
+    double highestShortValue;
+    double lowestShortValue;
 
 public:
     void Init(int minBoxRangeInput, double minBoxPipsInput, double maxBoxPipsInput) {
@@ -34,6 +41,8 @@ public:
         maxBoxPips = maxBoxPipsInput * Point;
         boxCounter = 0;
         lastTimestamp = 0;
+        lastLongCheckedTime = 0;
+        lastShortCheckedTime = 0;
     }
 
     // Called on each new tick
@@ -53,21 +62,20 @@ public:
             lastTimestamp = Time[0];
         }
 
-        highestValue = -DBL_MAX;
-        lowestValue = DBL_MAX;
+        // 高値圏・安値圏を判定する時間足を確認
+        // CheckLongBar(PERIOD_H4);
+        CheckShortBar(PERIOD_M15);
+
+        // Print("Long ", highestLongValue, " ", lowestLongValue);
+        // Print("Short ", highestShortValue, " ", lowestShortValue);
+
+        double highestValue = -DBL_MAX;
+        double lowestValue = DBL_MAX;
 
         for (int i = 0; i < ArraySize(boxPrices); i++) {
             if (boxPrices[i].high > highestValue) highestValue = boxPrices[i].high;
             if (boxPrices[i].low < lowestValue) lowestValue = boxPrices[i].low;
         }
-
-        int direction = 0;
-
-        if (ArraySize(boxPrices) <= minBoxRange) {
-            return direction;
-        }
-        
-        bool isBreakOut = false;
 
         // 平均と標準偏差を計算
         // double average = CalculateAverage();
@@ -87,30 +95,34 @@ public:
         //     direction = 2;
         // }
 
-        int targetCandleIndex = 2;
+        int direction = 0;
+        int targetCandleIndex = 1;
         double wickFactor = 3.0; 
         int minWickPips = 5;
 
         // ボックスの中で高値圏での上ヒゲ・安値圏での下ヒゲのローソク足の出現を検知する
-        int position = DeterminePositionWithinBox(Close[targetCandleIndex]);
-         
-        if (position == -1 && IsLongLowerWick(targetCandleIndex, wickFactor, minWickPips) && IsBullishCandle(1)) {
+        // int positionInLongTerm = DeterminePositionWithinBox(Close[targetCandleIndex], highestLongValue, lowestLongValue, 0.30);
+        int positionInShortTerm = DeterminePositionWithinBox(Close[targetCandleIndex], highestShortValue, lowestShortValue, 0.20);
+        // Print("positionInLongTerm ",positionInLongTerm, " positionInShortTerm ", positionInShortTerm);
+
+        // ひとつまえの上位足のローソク足の状態を確認 
+        
+        if (positionInShortTerm == -1
+            && cs.IsLongLowerWick(targetCandleIndex, wickFactor, minWickPips)
+            && cs.IsBullishCandle(2)
+            && cs.IsHigherHighAndHigherLow(PERIOD_CURRENT, 1)) {
             stopLossPrice = lowestValue;
-            isBreakOut = true;
             direction = 1;
-        } else if (position == 1 && IsLongUpperWick(targetCandleIndex, wickFactor, minWickPips) && IsBearishCandle(1)) {
+        } else if (positionInShortTerm == 1
+            && cs.IsLongUpperWick(targetCandleIndex, wickFactor, minWickPips)
+            && !cs.IsBullishCandle(1)
+            && cs.IsLowerHighAndLowerLow(PERIOD_CURRENT, 1)) {
             stopLossPrice = highestValue;
-            isBreakOut = true;
             direction = 2;
         }
 
-        if (isBreakOut) {
-            DrawBox(highestValue, lowestValue);
-            ArrayFree(boxPrices);
-        }
-
-        if (ArraySize(boxPrices) >= 30) {
-            DrawBox(highestValue, lowestValue);
+        if (ArraySize(boxPrices) >= 15) {
+            // DrawBox(highestShortValue, lowestShortValue);
             ArrayFree(boxPrices);
         }
 
@@ -122,7 +134,7 @@ public:
     }
 
 private:
-    void DrawBox(double highestValue, double lowestValue) {
+    void DrawBox(double &highestValue, double &lowestValue) {
         string boxName = "RangeBox_" + IntegerToString(boxCounter);
 
         // Draw a new rectangle for the detected range
@@ -138,6 +150,7 @@ private:
         boxCounter++;
     }
 
+    // 平均を計算
     double CalculateAverage() {
         double sum = 0.0;
         for (int i = 0; i < ArraySize(boxPrices); i++) {
@@ -146,6 +159,7 @@ private:
         return sum / ArraySize(boxPrices);
     }
 
+    // 標準偏差を計算
     double CalculateStandardDeviation(double average) {
         double variance = 0.0;
         for (int i = 0; i < ArraySize(boxPrices); i++) {
@@ -154,62 +168,12 @@ private:
         return MathSqrt(variance / ArraySize(boxPrices));
     }
 
-    // ローソク足が陽線なら True
-    bool IsBullishCandle(int candleIndex) {
-        return Close[candleIndex] > Open[candleIndex];
-    }
-
-    // ローソク足が陰線なら True
-    bool IsBearishCandle(int candleIndex) {
-        return Close[candleIndex] < Open[candleIndex];
-    }
-
-    // 関数は、小さな実体と長い下ヒゲを持つローソク足を検出 IsLongLowerWick(0, 0.2, 3)
-    bool IsLongLowerWick(int candleIndex, double wickFactor, int minWickPips) {
-        // 実体のサイズを取得
-        double openPrice = Open[candleIndex];
-        double closePrice = Close[candleIndex];
-        double highPrice = High[candleIndex];
-        double lowPrice = Low[candleIndex];
-        double bodySize = MathAbs(openPrice - closePrice);
-        
-        // 下ヒゲのサイズを取得
-        double lowerWickSize = (openPrice > closePrice) ? (closePrice - lowPrice) : (openPrice - lowPrice);
-        bool isWickLongEnough = lowerWickSize >= ut.PipsToPrice(minWickPips);
-        // Print("lowerWickSize ", lowerWickSize, " >= ", ut.PipsToPrice(minWickPips));
-
-        // 実体が小さく、下ヒゲが実体の指定された倍以上であるか確認
-        return lowerWickSize >= bodySize * wickFactor && isWickLongEnough;
-    }
-
-    // 関数は、小さな実体と長い上ヒゲを持つローソク足を検出 IsLongUpperWick(0, 0.2, 3)
-    bool IsLongUpperWick(int candleIndex, double wickFactor, int minWickPips) {
-        // 実体のサイズを取得
-        double openPrice = Open[candleIndex];
-        double closePrice = Close[candleIndex];
-        double highPrice = High[candleIndex];
-        double lowPrice = Low[candleIndex];
-        double bodySize = MathAbs(openPrice - closePrice);
-        
-        // 上ヒゲのサイズを取得
-        double upperWickSize = (openPrice > closePrice) ? (highPrice - openPrice) : (highPrice - closePrice);
-        bool isWickLongEnough = upperWickSize >= ut.PipsToPrice(minWickPips);
-        // Print("lowerWickSize ", upperWickSize, " >= ", ut.PipsToPrice(minWickPips));
-
-        // 実体が小さく、上ヒゲが実体の指定された倍以上であるか確認
-        return upperWickSize >= bodySize * wickFactor && isWickLongEnough;
-    }
-
     // ボックス内での現在の位置を判定する
-    int DeterminePositionWithinBox(double price) {
-        // 最高値と最低値を検出
-        double highest = highestValue;
-        double lowest = lowestValue;
-
+    int DeterminePositionWithinBox(double price, double highest, double lowest, double ratio) {
         // 安値圏と高値圏の境界を定義
         double range = highest - lowest;
-        double highThreshold = highest - range * 0.20; // 上位20%を高値圏と定義
-        double lowThreshold = lowest + range * 0.20; // 下位20%を安値圏と定義
+        double highThreshold = highest - range * ratio; // 上位N%を高値圏と定義
+        double lowThreshold = lowest + range * ratio; // 下位N%を安値圏と定義
 
         // 現在の終値がどの位置にあるか判断
         if (price <= lowThreshold) {
@@ -218,6 +182,40 @@ private:
             return 1; // 高値圏
         } else {
             return 0; // 中間
+        }
+    }
+
+    void CheckLongBar(int timeframe) {
+        int latestBar = iBarShift(NULL, timeframe, 0); // 最新のバーのインデックスを取得
+
+        // 最新のバーの開始時刻を取得
+        datetime currentBarTime = iTime(NULL, timeframe, latestBar);
+
+        // 以前のチェックから新しいバーが形成されたかを確認
+        if (currentBarTime != lastLongCheckedTime) {
+            // HighとLowを取得
+            highestLongValue = iHigh(NULL, timeframe, latestBar);
+            lowestLongValue = iLow(NULL, timeframe, latestBar);
+
+            // 最後にチェックした時間を更新
+            lastLongCheckedTime = currentBarTime;
+        }
+    }
+
+    void CheckShortBar(int timeframe) {
+        int latestBar = iBarShift(NULL, timeframe, 0); // 最新のバーのインデックスを取得
+
+        // 最新のバーの開始時刻を取得
+        datetime currentBarTime = iTime(NULL, timeframe, latestBar);
+
+        // 以前のチェックから新しいバーが形成されたかを確認
+        if (currentBarTime != lastShortCheckedTime) {
+            // HighとLowを取得
+            highestShortValue = iHigh(NULL, timeframe, latestBar);
+            lowestShortValue = iLow(NULL, timeframe, latestBar);
+
+            // 最後にチェックした時間を更新
+            lastShortCheckedTime = currentBarTime;
         }
     }
 
