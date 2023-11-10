@@ -56,13 +56,13 @@ public:
     }
 
     // 直近N分間の最高価格を返す
-    double GetHighestPrice(int n, int timeframe) {
+    double GetHighestPrice(int n, int timeframe = PERIOD_CURRENT) {
         int highBar = iHighest(NULL, timeframe, MODE_HIGH, n, 1);
         return iHigh(NULL, timeframe, highBar);
     }
 
     // 直近N分間の最低価格を返す
-    double GetLowestPrice(int n, int timeframe) {
+    double GetLowestPrice(int n, int timeframe = PERIOD_CURRENT) {
         int lowBar = iLowest(NULL, timeframe, MODE_LOW, n, 1);
         return iLow(NULL, timeframe, lowBar);
     }
@@ -109,6 +109,29 @@ public:
         double low3 = iLow(NULL, timeframe, candleIndex + 2);
 
         return high1 < high2 && high2 < high3 && low1 < low2 && low2 < low3;
+    }
+
+    // 2つの直近の極大値・極小値が連続して上昇しているか
+    string GetTrend(int timeframe, int barsCount) {
+        int lastHighBar = iHighest(NULL, timeframe, MODE_HIGH, barsCount, 1);
+        int previousHighBar = iHighest(NULL, timeframe, MODE_HIGH, barsCount, lastHighBar + 1);
+        int lastLowBar = iLowest(NULL, timeframe, MODE_LOW, barsCount, 1);
+        int previousLowBar = iLowest(NULL, timeframe, MODE_LOW, barsCount, lastLowBar + 1);
+
+        double lastHighValue = iHigh(NULL, timeframe, lastHighBar);
+        double previousHighValue = iHigh(NULL, timeframe, previousHighBar);
+        double lastLowValue = iLow(NULL, timeframe, lastLowBar);
+        double previousLowValue = iLow(NULL, timeframe, previousLowBar);
+
+        if (lastHighValue > previousHighValue && lastLowValue > previousLowValue) {
+            return "UP TREND";
+        }
+
+        if (lastHighValue < previousHighValue && lastLowValue < previousLowValue) {
+            return "DOWN TREND";
+        }
+
+        return "RANGE";
     }
 
     // スラストアップ：強い上昇のサイン
@@ -259,7 +282,7 @@ public:
     }
 
     // パーフェクトオーダーを判定
-    bool IsPerfectOrder(int action, int timeframe) {
+    bool IsPerfectOrder(string order, int timeframe = PERIOD_CURRENT) {
         double maShort = iMA(NULL, timeframe, 50, 0, MODE_SMA, PRICE_CLOSE, 0);
         double maMiddle = iMA(NULL, timeframe, 100, 0, MODE_SMA, PRICE_CLOSE, 0);
         double maLong = iMA(NULL, timeframe, 200, 0, MODE_SMA, PRICE_CLOSE, 0);
@@ -267,12 +290,12 @@ public:
         double maMiddlePrev = iMA(NULL, timeframe, 100, 0, MODE_SMA, PRICE_CLOSE, 10);
         double maLongPrev = iMA(NULL, timeframe, 200, 0, MODE_SMA, PRICE_CLOSE, 10);
 
-        if (action == 1) {
+        if (order == "BUY") {
             return maShort > maMiddle && maMiddle > maLong &&
                    maLong > maLongPrev && maMiddle > maMiddlePrev && maLong > maLongPrev;
         }
 
-        if (action == 2) {
+        if (order == "SELL") {
             return maShort < maMiddle && maMiddle < maLong &&
                    maLong < maLongPrev && maMiddle < maMiddlePrev && maLong < maLongPrev;
         }

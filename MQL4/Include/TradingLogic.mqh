@@ -24,7 +24,6 @@ private:
     Utility ut;
 
     datetime lastTradeTime;
-    bool isTradingCondition;
 
 public:
     void Run() {
@@ -45,7 +44,7 @@ private:
             orderMgr.CheckAndCloseStagnantPositions(MaxHoldingMinutes, Magic);
         }
 
-        // if (!ut.IsVolatilityAcceptable(Symbol(), 14, 0.01)) {
+        // if (!ut.IsVolatilityAcceptable(Symbol(), 4, 0.05)) {
         //     return false;
         // }
 
@@ -57,73 +56,81 @@ private:
     }
 
     void Trade() {
-        // ローソク足による環境認識(上位足)
-        bool isUpTrend = iHigh(NULL, PERIOD_H4, 0) > iHigh(NULL, PERIOD_H4, 1) && iLow(NULL, PERIOD_H4, 0) > iLow(NULL, PERIOD_H4, 1);
-        bool isDownTrend = iHigh(NULL, PERIOD_H4, 0) < iHigh(NULL, PERIOD_H4, 1) && iLow(NULL, PERIOD_H4, 0) < iLow(NULL, PERIOD_H4, 1);
+        // 環境認識
+        string trend = cs.GetTrend(PERIOD_M5, 1);
+        Comment("Primary: " + trend);
 
-        if (!isUpTrend && !isDownTrend) {
+        if (trend == "RANGE") {
             return;
         }
 
-        // 環境認識(下位足) ※調整トレンド発生の確認
-        bool isUpTrendFast = iHigh(NULL, PERIOD_M15, 1) > iHigh(NULL, PERIOD_M15, 2) && iLow(NULL, PERIOD_M15, 1) > iLow(NULL, PERIOD_M15, 2);
-        bool isDownTrendFast = iHigh(NULL, PERIOD_M15, 1) < iHigh(NULL, PERIOD_M15, 2) && iLow(NULL, PERIOD_M15, 1) < iLow(NULL, PERIOD_M15, 2);
-
-        if (!isUpTrendFast && !isDownTrendFast) {
-            return;
-        }
-
-        // 執行足の確認
-        zzSeeker.UpdateExtremaArray(PERIOD_CURRENT, 5);
+        bool isUpTrend = trend == "UP TREND";
+        bool isDownTrend = trend == "DOWN TREND";
         
-        // 押し安値
-        double prevValleyValue = zzSeeker.GetPrevValleyValue();
-        double latstPeak = zzSeeker.GetLatestValue(true);
+        // 環境認識(下位足) 
+        // string trendFast = cs.GetTrend(PERIOD_M5, 5); // ある程度の値幅がほしい
 
-        // 戻り高値
-        double prevPeakValue = zzSeeker.GetPrevPeakValue();
-        double latstValley = zzSeeker.GetLatestValue(false);
+        // Comment(
+        //     "Primary: ", trend, "\n",
+        //     "Secondary: ", trendFast, "\n");
 
-        // プライスアクション
-        // bool isLongLowerWick = cs.IsLongLowerWick(PERIOD_CURRENT, 1, 0.2, 3);
-        // bool isLongUpperWick = cs.IsLongUpperWick(PERIOD_CURRENT, 1, 0.2, 3);
-        // bool isBullishOutSideBar = cs.IsBullishOutSideBar2(PERIOD_CURRENT, 1);
-        // bool isBearishOutSideBar = cs.IsBearishOutSideBar2(PERIOD_CURRENT, 1);
+        // Comment("Secondary: " + trendFast);
+
+        // if (trendFast == "RANGE") {
+        //     return;
+        // }
+
+        // bool isUpTrendFast = trendFast == "UP TREND";
+        // bool isDownTrendFast = trendFast == "DOWN TREND";
+
+        // Price action
+        bool isLongLowerWick = cs.IsLongLowerWick(PERIOD_CURRENT, 1, 0.2, 3);
+        bool isLongUpperWick = cs.IsLongUpperWick(PERIOD_CURRENT, 1, 0.2, 3);
+        bool isBullishOutSideBar = cs.IsBullishOutSideBar(PERIOD_CURRENT, 1);
+        bool isBearishOutSideBar = cs.IsBearishOutSideBar(PERIOD_CURRENT, 1);
         bool IsThrustUp = cs.IsThrustUp(PERIOD_CURRENT, 1);
         bool IsThrustDown = cs.IsThrustUp(PERIOD_CURRENT, 1);
 
-        bool isBreakOutLong = Close[1] < prevPeakValue && Close[0] > prevPeakValue;
-        bool isBreakOutShort = Close[1] > prevValleyValue && Close[0] < prevValleyValue;
+        // 執行足の確認
+        zzSeeker.UpdateExtremaArray(PERIOD_CURRENT, 6);
+        
+        // 押し安値
+        double prevValleyValue = zzSeeker.GetPrevValleyValue();
+        double latestPeak = zzSeeker.GetLatestValue(true);
 
+        // 戻り高値
+        double prevPeakValue = zzSeeker.GetPrevPeakValue();
+        double latestValley = zzSeeker.GetLatestValue(false);
+
+        // Execution
+        bool isBuy = isUpTrend && Close[1] < prevPeakValue && Close[0] > prevPeakValue && !isLongLowerWick;
+        bool isSell = isDownTrend && Close[1] > prevValleyValue && Close[0] < prevValleyValue && !isLongUpperWick;
+
+        double risk = RiskRewardRatio;
         double stopLossPrice = 0;
         double takeProfitPrice = 0;
+        double lot = 0;
         int ticket = 0;
 
         if (OrdersTotal() > 0) {
             return;
         }
 
-        // TODO ある条件下でrr比を*2する処理を入れる
-        // 1. 上位足で上昇ダウ中に、下位足でトレンド調整（弱い下落トレンド）が終わり、
-        // 2. 戻り高値ブレイクで上昇ダウを形成したらロングエントリ、上位足ダウの高値に到達でクローズ
-
         // Buy
-        if (isBreakOutLong && isDownTrendFast && isUpTrend) {
-            stopLossPrice = latstValley;
-            // stopLossPrice = AdjustStopLoss("BUY", MarketInfo(NULL, MODE_ASK), stopLossPrice, MinStopLossPips);
-            ticket = orderMgr.PlaceBuyOrder("BUY", stopLossPrice, takeProfitPrice, RiskRewardRatio, Magic);
+        if (isBuy) {
+            stopLossPrice = latestValley;
+            ticket = orderMgr.PlaceMarketOrder("BUY", stopLossPrice, takeProfitPrice, lot, risk, Magic);
         }
 
         // Sell
-        if (isBreakOutShort && isUpTrendFast && isDownTrend) {
-            stopLossPrice = latstPeak;
-            // stopLossPrice = AdjustStopLoss("SELL", MarketInfo(NULL, MODE_BID), stopLossPrice, MinStopLossPips);
-            ticket = orderMgr.PlaceSellOrder("SELL", stopLossPrice, takeProfitPrice, RiskRewardRatio, Magic);
+        if (isSell) {
+            stopLossPrice = latestPeak;
+            ticket = orderMgr.PlaceMarketOrder("SELL", stopLossPrice, takeProfitPrice, lot, risk, Magic);
         }
-
-        if (ticket > 0) {
-            lastTradeTime = TimeCurrent();
-        }
+        
+        // if (ticket > 0) {
+        //     lastTradeTime = TimeCurrent();
+        // }
     }
 
     // ストップロスの下限を指定したpipsに設定
