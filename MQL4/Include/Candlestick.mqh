@@ -55,6 +55,116 @@ public:
         return candle.isBullish;
     }
 
+    bool IsUpCandle(int timeframe) {
+        double open = iOpen(NULL, timeframe, 1);
+        double close = iClose(NULL, timeframe, 1);
+        double prevOpen = iOpen(NULL, timeframe, 2);
+        double prevClose = iClose(NULL, timeframe, 2);
+
+        double high = iHigh(NULL, timeframe, 1);
+        double low = iLow(NULL, timeframe, 1);
+        double prevHigh = iHigh(NULL, timeframe, 2);
+        double prevLow = iLow(NULL, timeframe, 2);
+
+        bool yousen = close > open && prevClose > prevOpen;
+        bool higher = high > prevHigh && low > prevLow;
+
+        return yousen && higher;
+    }
+
+    bool IsDownCandle(int timeframe) {
+        double open = iOpen(NULL, timeframe, 1);
+        double close = iClose(NULL, timeframe, 1);
+        double prevOpen = iOpen(NULL, timeframe, 2);
+        double prevClose = iClose(NULL, timeframe, 2);
+
+        double high = iHigh(NULL, timeframe, 1);
+        double low = iLow(NULL, timeframe, 1);
+        double prebHigh = iHigh(NULL, timeframe, 2);
+        double prevLow = iLow(NULL, timeframe, 2);
+
+        bool insen = close < open && prevClose < prevOpen;
+        bool lower = high < prebHigh && low < prevLow;
+
+        return insen && lower;
+    }
+
+    // 連続して陽線が続いたかどうか
+    bool IsConsecutiveBullishCandle(int shift, int n) {
+        int counter = 0;
+        for (int i = 1; i <= shift; i++) {
+             if (Close[i] > Open[i]) {
+                counter++;
+             } else {
+                counter = 0;
+             }
+        }
+
+        return counter >= n;
+    }
+
+    // 連続して陰線が続いたかどうか
+    bool IsConsecutiveBearlishCandle(int shift, int n) {
+        int counter = 0;
+        for (int i = 1; i <= shift; i++) {
+             if (Close[i] < Open[i]) {
+                counter++;
+             } else {
+                counter = 0;
+             }
+        }
+
+        return counter >= n;
+    }
+    
+    // 連続して陰線が続いた後、陽線で安値が切りあがる（押し目買いエントリー）
+    // bool isBullishReversal(int shift, int n) {
+    //     int counter = 0;
+    //     bool isReversal = false;
+
+    //     for (int i = 1; i <= shift; i++) {
+    //         // 陰線をカウント
+    //         if (Close[i] < Open[i]) {
+    //             counter++;
+    //             // 連続してN回以上陰線が続いているか確認
+    //             if (counter >= n) {
+    //                 // 次のローソク足が陽線で、かつ安値が前の陰線の安値より高いかチェック
+    //                 if (Close[i-1] > Open[i-1] && Low[i-1] > Low[i]) {
+    //                     isReversal = true;
+    //                     break;
+    //                 }
+    //             }
+    //         } else if (Close[i] > Open[i] && counter < n) {
+    //             // 陽線が出たらカウントをリセット
+    //             counter = 0;    
+    //         }
+    //     }
+
+    //     return isReversal;
+    // }
+
+    // 連続して陰線が続いた後、陽線で安値が切り上がる（押し目買いエントリー）
+    bool IsBullishReversal() {
+        bool upCandle = IsUpCandle(1);
+        bool c2 = IsBullishCandle(2);
+        bool c3 = IsBullishCandle(3);
+        bool c4 = IsBullishCandle(4);
+        bool c5 = IsBullishCandle(5);
+
+        return upCandle && c2 && !c3 && !c4 && !c5; 
+    }
+
+    // 連続して陽線が続いた後、陰線で高値が切り下がる（戻り売りエントリー）
+    bool IsBearlishReversal() {
+        bool downCandle = IsDownCandle(1);
+        bool c2 = IsBullishCandle(2);
+        bool c3 = IsBullishCandle(3);
+        bool c4 = IsBullishCandle(4);
+        bool c5 = IsBullishCandle(5);
+
+        return downCandle && !c2 && c3 && c4 && c5; 
+    }
+
     // 直近N分間の最高価格を返す
     double GetHighestPrice(int n, int timeframe = PERIOD_CURRENT) {
         int highBar = iHighest(NULL, timeframe, MODE_HIGH, n, 1);
@@ -230,7 +340,7 @@ public:
         return isPrevBearish && isCurrBearish && doesEngulf;
     }
 
-    // ピンバー: 小さな実体と長い下ヒゲを持つローソク足を検出 IsLongLowerWick(1, PERIOD_M15, 0.2, 3)
+    // ピンバー: 小さな実体と長い下ヒゲを持つローソク足を検出 IsLongLowerWick(PERIOD_M15, 1, 0.2, 3)
     bool IsLongLowerWick(int timeframe, int candleIndex, double wickFactor, int minWickPips) {
         GetCandle(candleIndex, timeframe);
         bool isBodySizeEnough = candle.lowerWickSize >= candle.bodySize * wickFactor;
@@ -241,7 +351,7 @@ public:
         return isBodySizeEnough && isWickLongEnough && isLowerWickTwiceUpper;
     }
 
-    // ピンバー: 小さな実体と長い上ヒゲを持つローソク足を検出 IsLongUpperWick(1, PERIOD_M15, 0.2, 3)
+    // ピンバー: 小さな実体と長い上ヒゲを持つローソク足を検出 IsLongUpperWick(PERIOD_M15, 1, 0.2, 3)
     bool IsLongUpperWick(int timeframe, int candleIndex, double wickFactor, int minWickPips) {
         GetCandle(candleIndex, timeframe);
         bool isBodySizeEnough = candle.upperWickSize >= candle.bodySize * wickFactor;
@@ -250,6 +360,24 @@ public:
 
         // 実体が小さく、上ヒゲが実体の指定された倍以上、上ヒゲが下ヒゲよりも大きいか
         return isBodySizeEnough && isWickLongEnough && isUpperWickTwiceUpper;
+    }
+
+    // 三尊: ショート用
+    bool IsHeadAndShouldersSell(int timeframe, int candleIndex) {
+        bool yousen = iClose(NULL, timeframe, candleIndex + 2) > iOpen(NULL, timeframe, candleIndex + 2);
+        bool pinbar = IsLongUpperWick(timeframe, candleIndex + 1, 0.2, 3);
+        bool insen = iClose(NULL, timeframe, candleIndex) < iOpen(NULL, timeframe, candleIndex);
+
+        return yousen && pinbar && insen;
+    }
+
+    // 三尊: ロング用
+    bool IsHeadAndShouldersBuy(int timeframe, int candleIndex) {
+        bool insen = iClose(NULL, timeframe, candleIndex + 2) < iOpen(NULL, timeframe, candleIndex + 2);
+        bool pinbar = IsLongLowerWick(timeframe, candleIndex + 1, 0.2, 3);
+        bool yousen = iClose(NULL, timeframe, candleIndex) > iOpen(NULL, timeframe, candleIndex);
+
+        return insen && pinbar && yousen;
     }
 
     // ローソク足の大きさを確認
@@ -281,6 +409,52 @@ public:
             && wickLength < bodyLength * 0.1;
     }
 
+    // ローソク足の傾きを度数で取得する
+    double GetCandleSlopeInDegrees(int timeframe, int backShift = 3, bool isHigh = true) {
+        double low = iLow(NULL, timeframe, 0);
+        double lowShift = iLow(NULL, timeframe, backShift);
+
+        // 価格変化を取得
+        double deltaPrice = (low - lowShift) / Point;
+
+        if (isHigh) {
+            double high = iHigh(NULL, timeframe, 0);
+            double highShift = iHigh(NULL, timeframe, backShift);
+            deltaPrice = (high - highShift) / Point;
+        }
+        
+        // 時間（バーの数）による変化を取得
+        double deltaTime = backShift;
+        
+        // 傾きの角度（ラジアン）を計算
+        double angleInRadians = atan(deltaPrice / deltaTime);
+
+        // 傾きの角度を度数で取得
+        double angleInDegrees = angleInRadians * (180.0 / M_PI);
+        
+        return angleInDegrees;
+    }
+
+    // MAの傾きを度数で取得する
+    double GetMovingAverageSlopeInDegrees(int maPeriod = 20, int maMethod = MODE_SMA, int backShift = 20) {
+        double firstMA = iMA(NULL, 0, maPeriod, 0, maMethod, PRICE_CLOSE, 0);
+        double secondMA = iMA(NULL, 0, maPeriod, 0, maMethod, PRICE_CLOSE, backShift);
+        
+        // 価格変化を取得
+        double deltaPrice = (firstMA - secondMA) / Point;
+        
+        // 時間（バーの数）による変化を取得
+        double deltaTime = backShift;
+        
+        // 傾きの角度（ラジアン）を計算
+        double angleInRadians = atan(deltaPrice / deltaTime);
+
+        // 傾きの角度を度数で取得
+        double angleInDegrees = angleInRadians * (180.0 / M_PI);
+        
+        return angleInDegrees;
+    }
+
     // パーフェクトオーダーを判定
     bool IsPerfectOrder(string order, int timeframe = PERIOD_CURRENT) {
         double maShort = iMA(NULL, timeframe, 50, 0, MODE_SMA, PRICE_CLOSE, 0);
@@ -301,6 +475,33 @@ public:
         }
 
         return false;
+    }
+
+    // パーフェクトオーダーを判定(マルチタイムフレーム)
+    bool IsPerfectOrderMTF(string order) {
+        double maShort = iMA(NULL, PERIOD_CURRENT, 20, 0, MODE_SMA, PRICE_CLOSE, 0);
+        double maMiddle = iMA(NULL, PERIOD_M5, 20, 0, MODE_SMA, PRICE_CLOSE, 0);
+        double maLong = iMA(NULL, PERIOD_M15, 20, 0, MODE_SMA, PRICE_CLOSE, 0);
+        double maShortPrev = iMA(NULL, PERIOD_CURRENT, 20, 0, MODE_SMA, PRICE_CLOSE, 10);
+        double maMiddlePrev = iMA(NULL, PERIOD_M5, 20, 0, MODE_SMA, PRICE_CLOSE, 10);
+        double maLongPrev = iMA(NULL, PERIOD_M15, 20, 0, MODE_SMA, PRICE_CLOSE, 10);
+
+        if (order == "BUY") {
+            return maShort > maMiddle && maMiddle > maLong &&
+                   maLong > maLongPrev && maMiddle > maMiddlePrev && maLong > maLongPrev;
+        }
+
+        if (order == "SELL") {
+            return maShort < maMiddle && maMiddle < maLong &&
+                   maLong < maLongPrev && maMiddle < maMiddlePrev && maLong < maLongPrev;
+        }
+
+        return false;
+    }
+
+    // MACDの値を取得（正の値: 上昇トレンド、負の値: 下降トレンド)
+    double GetValueOfMACD(int fastEMA = 12, int slowEMA = 26, int signalSMA = 9, int shift = 0) {
+        return iMACD(NULL, PERIOD_CURRENT, fastEMA, slowEMA, signalSMA, PRICE_CLOSE, MODE_MAIN, shift);
     }
 
 private:
